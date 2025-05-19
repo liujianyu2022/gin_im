@@ -2,7 +2,7 @@ package model
 
 import "gorm.io/gorm"
 
-type UserBasic struct{
+type User struct{
 	gorm.Model
 	Name string
 	Password string
@@ -18,6 +18,6 @@ type UserBasic struct{
 	DeviceInfo string
 }
 
-func (table *UserBasic) TableName() string {
-	return "user_basic"
+func (table *User) TableName() string {
+	return "user"
 }

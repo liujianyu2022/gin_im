@@ -10,9 +10,10 @@ import (
 )
 
 type Config struct {
-	App   AppConfig
-	MySQL MySQLConfig
-	Redis RedisConfig
+	App   AppConfig   `yaml:"app"`
+	MySQL MySQLConfig `yaml:"mysql"`
+	Redis RedisConfig `yaml:"redis"`
+	JWT   JWTConfig   `yaml:"jwt"` // 确保有这个标签
 }
 
 type AppConfig struct {
@@ -40,6 +41,12 @@ type RedisConfig struct {
 	PoolSize int
 }
 
+// 新增JWT配置结构体
+type JWTConfig struct {
+	Secret     string `yaml:"secret"`
+	ExpireTime int    `yaml:"expire_time"` // 过期时间(小时)
+}
+
 var (
 	once     sync.Once
 	instance *Config
@@ -47,7 +54,7 @@ var (
 
 func LoadConfig(path string) *Config {
 	once.Do(func() {
-		
+
 		// 读取文件内容
 		data, err := os.ReadFile(path)
 		if err != nil {

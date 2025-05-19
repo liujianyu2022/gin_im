@@ -9,7 +9,10 @@ package wire
 import (
 	"gin_im/config"
 	"gin_im/db"
+	"gin_im/handler"
+	"gin_im/repository"
 	"gin_im/router"
+	"gin_im/service"
 	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
 )
@@ -17,11 +20,25 @@ import (
 // Injectors from wire.go:
 
 func InitializeApp(configPath string) (*gin.Engine, error) {
-	engine := router.SetupRouter()
+	configConfig := config.LoadConfig(configPath)
+	gormDB, err := db.NewMySQLDB(configConfig)
+	if err != nil {
+		return nil, err
+	}
+	userRepository := repository.NewUserRepository(gormDB)
+	userService := service.NewUserService(userRepository)
+	userHandler := handler.NewUserHandler(userService, configConfig)
+	engine := router.SetupRouter(configConfig, userHandler)
 	return engine, nil
 }
 
 // wire.go:
+
+var handlerSet = wire.NewSet(handler.NewUserHandler)
+
+var serviceSet = wire.NewSet(service.NewUserService)
+
+var repositorySet = wire.NewSet(repository.NewUserRepository)
 
 var dbSet = wire.NewSet(db.NewMySQLDB, db.NewRedisClient)
 
@@ -30,6 +47,10 @@ var routerSet = wire.NewSet(router.SetupRouter)
 var configSet = wire.NewSet(config.LoadConfig)
 
 var SuperSet = wire.NewSet(
+	handlerSet,
+	serviceSet,
+	repositorySet,
 	dbSet,
 	routerSet,
+	configSet,
 )

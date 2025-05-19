@@ -1,13 +1,14 @@
 package main
 
 import (
-	
 	"log"
 
 	"github.com/gin-gonic/gin"
 
 	"gin_im/config"
 	"gin_im/wire"
+
+	_ "gin_im/docs" 		// 这行必须存在
 )
 
 func main() {
