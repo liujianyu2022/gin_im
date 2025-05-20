@@ -27,6 +27,18 @@ func (repository *UserRepository) CreateUser(user *model.User) (*model.User, err
 	return user, nil
 }
 
+func (repository *UserRepository) GetUserById(id uint) (*model.User, error) {
+	var user model.User
+	var err error = repository.db.Where("id = ?", id).First(&user).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &user, nil
+}
+
 func (repository *UserRepository) GetUserByName(name string) (*model.User, error) {
 	var user model.User
 	var err error = repository.db.Where("name = ?", name).First(&user).Error

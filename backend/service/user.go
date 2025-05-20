@@ -86,7 +86,12 @@ func (service *UserService) Login(request *api.LoginRequest, config *config.Conf
 	return token, nil
 }
 
-func (service *UserService) GetUserINformationByName(name string) (*model.User, error) {
+func (service *UserService) GetUserInformationByName(name string) (*model.User, error) {
 	user, err := service.Repository.GetUserByName(name)
+	return user, err
+}
+
+func (service *UserService) GetUserInformationById(id uint) (*model.User, error) {
+	user, err := service.Repository.GetUserById(id)
 	return user, err
 }

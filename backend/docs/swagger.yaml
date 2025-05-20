@@ -24,11 +24,11 @@ paths:
     get:
       consumes:
       - application/json
-      description: Get user information by name
+      description: Get user information by token
       parameters:
-      - description: User name
-        in: query
-        name: name
+      - description: Bearer {token}
+        in: header
+        name: Authorization
         required: true
         type: string
       produces:
@@ -45,12 +45,20 @@ paths:
             additionalProperties:
               type: string
             type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "404":
           description: Not Found
           schema:
             additionalProperties:
               type: string
             type: object
+      security:
+      - ApiKeyAuth: []
       summary: Get User Information
       tags:
       - user

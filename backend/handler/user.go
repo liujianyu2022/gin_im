@@ -8,6 +8,7 @@
 package handler
 
 import (
+	"fmt"
 	"gin_im/api"
 	"gin_im/config"
 	"gin_im/service"
@@ -23,7 +24,7 @@ type UserHandler struct {
 func NewUserHandler(service *service.UserService, config *config.Config) *UserHandler {
 	return &UserHandler{
 		Service: service,
-		Config: config,
+		Config:  config,
 	}
 }
 
@@ -86,23 +87,34 @@ func (handler *UserHandler) Login(ctx *gin.Context) {
 }
 
 // @Summary Get User Information
-// @Description Get user information by name
+// @Description Get user information by token
 // @Tags user
 // @Accept  json
 // @Produce  json
-// @Param name query string true "User name"
+// @Security ApiKeyAuth
+// @Param Authorization header string true "Bearer {token}"
 // @Success 200 {object} map[string]any
 // @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
 // @Failure 404 {object} map[string]string
 // @Router /user/information [get]
 func (handler *UserHandler) GetUserInformation(ctx *gin.Context) {
-	name := ctx.Query("name")
-	if name == "" {
+	userId, existed := ctx.Get("userId")
+	if !existed {
 		api.HandleError(ctx, api.ErrBadRequest, nil)
 		return
 	}
 
-	user, err := handler.Service.GetUserINformationByName(name)
+	// 类型断言
+	userIdUint, ok := userId.(uint)
+	if !ok {
+		api.HandleError(ctx, api.ErrBadRequest, nil)
+		return
+	}
+
+	fmt.Println("userId = ", userIdUint)
+
+	user, err := handler.Service.GetUserInformationById(userIdUint)
 	if err != nil {
 		api.HandleError(ctx, err, nil)
 		return

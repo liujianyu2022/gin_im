@@ -38,7 +38,7 @@ func JWTAuth(config *config.Config) gin.HandlerFunc {
 		}
 
 		// 将用户ID存入上下文
-		ctx.Set("user_id", claims.UserID)
+		ctx.Set("userId", claims.UserID)
 		
 		ctx.Next()
 	}

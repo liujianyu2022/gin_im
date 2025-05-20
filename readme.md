@@ -151,3 +151,23 @@ http://localhost:8080/swagger/index.html
 
 
 They will be installed at 'GOPATH', you can run 'go env GOPATH' to get the 'GOPATH'
+
+### debug
+launch.json
+```json
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch Package",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "D:/code/gin_im/backend/main.go"			// the entrypoint of main.go
+        }
+    ]
+}
+```
