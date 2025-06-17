@@ -3,12 +3,9 @@ package db
 import (
 	"context"
 	"fmt"
-
-	"time"
-
-	"github.com/redis/go-redis/v9"
-
 	"gin_im/config"
+	"time"
+	"github.com/redis/go-redis/v9"
 )
 
 func NewRedisClient(cfg *config.Config) (*redis.Client, error) {
@@ -20,7 +17,7 @@ func NewRedisClient(cfg *config.Config) (*redis.Client, error) {
 	})
 
 	// 创建一个带有超时时间的上下文 ctx，超时时间设置为 5 秒
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
 	defer cancel()
 
 	// 使用 Redis.Ping(ctx) 方法发送一个 PING 命令到 Redis 服务器，以测试连接是否成功

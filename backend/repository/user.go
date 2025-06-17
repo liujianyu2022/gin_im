@@ -24,6 +24,7 @@ func (repository *UserRepository) CreateUser(user *model.User) (*model.User, err
 	if err != nil {
 		return nil, err
 	}
+
 	return user, nil
 }
 
@@ -82,6 +83,12 @@ func (repository *UserRepository) GetUserByPhone(phone string) (*model.User, err
 }
 
 // UpdateUser 更新用户信息
-func (repository *UserRepository) UpdateUser(user *model.User) error {
-	return repository.db.Save(user).Error
+func (repository *UserRepository) UpdateUser(updateUser *model.User) (*model.User, error) {
+	var err error = repository.db.Save(updateUser).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return updateUser, err
 }

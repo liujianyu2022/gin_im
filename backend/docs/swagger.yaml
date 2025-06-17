@@ -122,4 +122,49 @@ paths:
       summary: Register
       tags:
       - user
+  /user/update:
+    put:
+      consumes:
+      - multipart/form-data
+      description: Update
+      parameters:
+      - description: Bearer {token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 用户名
+        in: formData
+        name: name
+        type: string
+      - description: 密码
+        in: formData
+        name: password
+        type: string
+      - description: 邮箱
+        in: formData
+        name: email
+        type: string
+      - description: 电话
+        in: formData
+        name: phone
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update
+      tags:
+      - user
 swagger: "2.0"

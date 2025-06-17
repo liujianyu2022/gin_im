@@ -13,6 +13,7 @@ import (
 	"gin_im/config"
 	"gin_im/service"
 
+	"github.com/asaskevich/govalidator"
 	"github.com/gin-gonic/gin"
 )
 
@@ -123,6 +124,60 @@ func (handler *UserHandler) GetUserInformation(ctx *gin.Context) {
 	api.HandleSuccess(ctx, user)
 }
 
-func (handler *UserHandler) UpdateUser(ctx *gin.Context) {
+// Produce 声明 API 返回的响应格式（如 JSON、XML、HTML 等）
 
+// @Summary Update
+// @Description Update
+// @Tags user
+// @Accept  multipart/form-data
+// @Produce  json
+// @Param Authorization header string true "Bearer {token}"
+// @Param name formData string false "用户名"
+// @Param password formData string false "密码"
+// @Param email formData string false "邮箱"
+// @Param phone formData string false "电话"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Router /user/update [put]
+func (handler *UserHandler) UpdateUser(ctx *gin.Context) {
+	userId, existed := ctx.Get("userId")
+	if !existed {
+		api.HandleError(ctx, api.ErrBadRequest, "")
+		return
+	}
+
+	userIdUint, ok := userId.(uint)
+	if !ok {
+		api.HandleError(ctx, api.ErrBadRequest, "")
+		return
+	}
+
+	updateUser, err := handler.Service.GetUserInformationById(userIdUint)
+
+	if name := ctx.PostForm("name"); name != "" {
+		updateUser.Name = name
+	}
+	if password := ctx.PostForm("password"); password != "" {
+		updateUser.Password = password
+	}
+	if email := ctx.PostForm("email"); email != "" {
+		updateUser.Email = email
+	}
+	if phone := ctx.PostForm("phone"); phone != "" {
+		updateUser.Phone = phone
+	}
+
+	_, err = govalidator.ValidateStruct(updateUser)
+	if err != nil {
+		api.HandleError(ctx, api.ErrBadRequest, "")
+		return
+	}
+
+	_, err = handler.Service.UpdateUser(updateUser)
+	if err != nil {
+		api.HandleError(ctx, err, "")
+		return
+	}
+
+	api.HandleSuccess(ctx, updateUser)
 }

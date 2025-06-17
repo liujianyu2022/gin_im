@@ -152,6 +152,9 @@ http://localhost:8080/swagger/index.html
 
 They will be installed at 'GOPATH', you can run 'go env GOPATH' to get the 'GOPATH'
 
+7. swag init
+Update swagger document when you update your code
+
 ### debug
 launch.json
 ```json

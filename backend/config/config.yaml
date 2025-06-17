@@ -4,7 +4,7 @@ app:
   mode: "debug"
 
 mysql:
-  host: "192.168.137.174"
+  host: "192.168.137.51"
   port: "3306"
   user: "root"
   password: "liujianyu"
@@ -14,7 +14,7 @@ mysql:
   conn_max_lifetime: 300
 
 redis:
-  host: "192.168.137.174"
+  host: "192.168.137.51"
   port: "6379"
   password: "liujianyu"
   db: 0

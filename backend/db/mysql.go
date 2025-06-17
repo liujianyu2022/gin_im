@@ -15,19 +15,21 @@ import (
 )
 
 func NewMySQLDB(config *config.Config) (*gorm.DB, error) {
-	db, err := gorm.Open(
-		mysql.Open(config.GetMySQLDSN()), 
-		&gorm.Config{
-			// Logger: logger.Default.LogMode(logger.Info),
+	
+	// 自定义日志模板，打印SQL语句
+	customLogger := logger.New(
+		log.New(os.Stdout, "\r\n", log.LstdFlags),
+		logger.Config{
+			SlowThreshold: time.Second, // 慢SQL阈值
+			LogLevel:      logger.Info, // 日志级别
+			Colorful:      true,        // 彩色
+		},
+	)
 
-			Logger: logger.New(
-				log.New(os.Stdout, "\r\n", log.LstdFlags),
-				logger.Config{
-					SlowThreshold: time.Second,				// 慢SQL阈值
-					LogLevel: logger.Info,					// 日志级别
-					Colorful: true,							// 彩色
-				},
-			),
+	db, err := gorm.Open(
+		mysql.Open(config.GetMySQLDSN()),
+		&gorm.Config{
+			Logger: customLogger,
 		},
 	)
 
@@ -46,6 +48,9 @@ func NewMySQLDB(config *config.Config) (*gorm.DB, error) {
 
 	db.AutoMigrate(
 		&model.User{},
+		&model.Message{},
+		&model.Contact{},
+		&model.Group{},
 	)
 
 	return db, nil

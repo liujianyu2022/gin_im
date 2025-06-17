@@ -36,7 +36,7 @@ func InitializeApp(configPath string) (*gin.Engine, error) {
 
 var handlerSet = wire.NewSet(handler.NewUserHandler)
 
-var serviceSet = wire.NewSet(service.NewUserService)
+var serviceSet = wire.NewSet(service.NewUserService, service.NewRedisService)
 
 var repositorySet = wire.NewSet(repository.NewUserRepository)
 

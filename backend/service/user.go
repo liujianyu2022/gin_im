@@ -60,8 +60,6 @@ func (service *UserService) Login(request *api.LoginRequest, config *config.Conf
 		return "", api.ErrNotFound
 	}
 
-	fmt.Println("user = ", user)
-
 	// 验证密码
 	if !tools.CheckPasswordHash(user.Password, request.Password) {
 		return "", api.ErrWrongPassword
@@ -78,7 +76,7 @@ func (service *UserService) Login(request *api.LoginRequest, config *config.Conf
 	now := time.Now()
 	user.LoginTime = uint64(now.Unix())
 
-	err = service.Repository.UpdateUser(user)
+	_, err = service.Repository.UpdateUser(user)
 	if err != nil {
 		return "", api.ErrInternalServer
 	}
@@ -93,5 +91,11 @@ func (service *UserService) GetUserInformationByName(name string) (*model.User, 
 
 func (service *UserService) GetUserInformationById(id uint) (*model.User, error) {
 	user, err := service.Repository.GetUserById(id)
+	return user, err
+}
+
+func (service *UserService) UpdateUser(updateUser *model.User) (*model.User, error) {
+	user, err := service.Repository.UpdateUser(updateUser)
+
 	return user, err
 }

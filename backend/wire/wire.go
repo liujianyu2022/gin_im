@@ -21,6 +21,7 @@ var handlerSet = wire.NewSet(
 
 var serviceSet = wire.NewSet(
 	service.NewUserService,
+	service.NewRedisService,
 )
 
 var repositorySet =wire.NewSet(
