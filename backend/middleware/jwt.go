@@ -17,6 +17,7 @@ func JWTAuth(config *config.Config) gin.HandlerFunc {
 		
 		if authHeader == "" {
 			api.HandleError(ctx, api.ErrUnauthorized, nil)
+			
 			ctx.Abort()
 			return
 		}

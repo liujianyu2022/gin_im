@@ -17,15 +17,17 @@ import (
 
 var handlerSet = wire.NewSet(
 	handler.NewUserHandler,
+	handler.NewWebsocketHandler,
 )
 
 var serviceSet = wire.NewSet(
 	service.NewUserService,
-	service.NewRedisService,
+	service.NewWebsocketService,
 )
 
 var repositorySet =wire.NewSet(
 	repository.NewUserRepository,
+	repository.NewRedisRepository,
 )
 
 var dbSet = wire.NewSet(

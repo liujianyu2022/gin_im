@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User A - WebSocket Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+        #messages { height: 300px; border: 1px solid #ccc; padding: 10px; overflow-y: scroll; margin-bottom: 10px; }
+        input { width: 100%; padding: 8px; margin-bottom: 10px; }
+        button { padding: 8px 15px; background: #4CAF50; color: white; border: none; cursor: pointer; }
+        button:hover { background: #45a049; }
+    </style>
+</head>
+<body>
+    <h1>User A (ID: 1001)</h1>
+    <div id="messages"></div>
+    
+    <input type="text" id="targetId" placeholder="Recipient ID (e.g. 1002)" value="1002">
+    <input type="text" id="messageInput" placeholder="Type your message here">
+    <button onclick="sendMessage()">Send</button>
+
+    <script>
+        const userId = 1001;
+        const ws = new WebSocket(`ws://192.168.137.14:8080/api/ws/connect?userId=${userId}`);
+        
+        // 接收消息
+        ws.onmessage = function(event) {
+            const msg = JSON.parse(event.data);
+            document.getElementById('messages').innerHTML += 
+                `<p><strong>From ${msg.form_id}:</strong> ${msg.content}</p>`;
+            scrollToBottom();
+        };
+
+        // 错误处理
+        ws.onerror = function(error) {
+            console.error('WebSocket Error:', error);
+        };
+
+        // 发送消息
+        function sendMessage() {
+            const targetId = document.getElementById('targetId').value;
+            const content = document.getElementById('messageInput').value;
+            
+            if (!targetId || !content) return;
+            
+            const message = {
+                type: 1, // 私聊
+                target_id: parseInt(targetId),
+                content: content
+            };
+            
+            ws.send(JSON.stringify(message));
+            document.getElementById('messageInput').value = '';
+            
+            // 本地显示自己发送的消息
+            document.getElementById('messages').innerHTML += 
+                `<p style="color:blue;"><strong>To ${targetId}:</strong> ${content}</p>`;
+            scrollToBottom();
+        }
+
+        // 自动滚动到底部
+        function scrollToBottom() {
+            const messagesDiv = document.getElementById('messages');
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // 输入框回车发送
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') sendMessage();
+        });
+    </script>
+</body>
+</html>

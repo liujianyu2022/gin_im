@@ -28,17 +28,24 @@ func InitializeApp(configPath string) (*gin.Engine, error) {
 	userRepository := repository.NewUserRepository(gormDB)
 	userService := service.NewUserService(userRepository)
 	userHandler := handler.NewUserHandler(userService, configConfig)
-	engine := router.SetupRouter(configConfig, userHandler)
+	client, err := db.NewRedisClient(configConfig)
+	if err != nil {
+		return nil, err
+	}
+	redisRepository := repository.NewRedisRepository(client)
+	websocketService := service.NewWebsocketService(redisRepository)
+	websocketHandler := handler.NewWebsocketHandler(websocketService)
+	engine := router.SetupRouter(configConfig, userHandler, websocketHandler)
 	return engine, nil
 }
 
 // wire.go:
 
-var handlerSet = wire.NewSet(handler.NewUserHandler)
+var handlerSet = wire.NewSet(handler.NewUserHandler, handler.NewWebsocketHandler)
 
-var serviceSet = wire.NewSet(service.NewUserService, service.NewRedisService)
+var serviceSet = wire.NewSet(service.NewUserService, service.NewWebsocketService)
 
-var repositorySet = wire.NewSet(repository.NewUserRepository)
+var repositorySet = wire.NewSet(repository.NewUserRepository, repository.NewRedisRepository)
 
 var dbSet = wire.NewSet(db.NewMySQLDB, db.NewRedisClient)
 

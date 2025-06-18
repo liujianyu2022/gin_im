@@ -15,6 +15,7 @@ import (
 func SetupRouter(
 	config *config.Config,
 	userHandler *handler.UserHandler,
+	websocketHandler *handler.WebsocketHandler,
 ) *gin.Engine {
 	ginServer := gin.Default()
 
@@ -47,6 +48,14 @@ func SetupRouter(
 				authUser.PUT("/update", userHandler.UpdateUser)
 
 			}
+		}
+
+		// WebSocket 相关路由
+		ws := api.Group("/ws")
+		ws.Use()
+		// ws.Use(middleware.JWTAuth(config))
+		{
+			ws.GET("/connect", websocketHandler.Connect)
 		}
 
 	}
