@@ -42,19 +42,20 @@ func (handler *WebsocketHandler) Connect(ctx *gin.Context) {
 		// return
 	}
 
+	// 将HTTP连接升级为WebSocket连接
 	conn, err := upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
 		fmt.Println("WebSocket upgrade error:", err)
 		return
 	}
 
-	// 3. 创建连接节点
-	node := &dto.WSNode{
+	// 创建WebsocketNode节点(包含WebSocket连接和数据通道)
+	node := &dto.WebsocketNode{
 		Conn:      conn,
 		DataQueue: make(chan []byte, 50),
 	}
 
-	// 2. 调用Service层
+	// 调用Service层的Connection方法处理连接
 	handler.Service.Connection(node, userID)
 }
 

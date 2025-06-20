@@ -32,3 +32,12 @@ func (r *RedisRepository) Subscribe(ctx *gin.Context, channels ...string) (strin
 
 	return msg.Payload, nil
 }
+
+
+// 在 repository 层添加获取群组成员的方法
+func (repository *RedisRepository) GetGroupMembers(groupId int64) ([]int64, error) {
+	// 实际实现可以从Redis或数据库获取
+
+	// 这里用模拟数据示例
+	return []int64{1001, 1002, 1003}, nil
+}

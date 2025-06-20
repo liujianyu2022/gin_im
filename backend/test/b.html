@@ -1,72 +1,247 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-    <title>User B - WebSocket Test</title>
+    <title>WebSocket Chat</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
-        #messages { height: 300px; border: 1px solid #ccc; padding: 10px; overflow-y: scroll; margin-bottom: 10px; }
-        input { width: 100%; padding: 8px; margin-bottom: 10px; }
-        button { padding: 8px 15px; background: #4CAF50; color: white; border: none; cursor: pointer; }
-        button:hover { background: #45a049; }
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        #messages {
+            height: 300px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            overflow-y: scroll;
+            margin-bottom: 10px;
+        }
+
+        .input-group {
+            margin-bottom: 10px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+
+        button {
+            padding: 8px 15px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+
+        .tab {
+            overflow: hidden;
+            border: 1px solid #ccc;
+            background-color: #f1f1f1;
+        }
+
+        .tab button {
+            background-color: inherit;
+            float: left;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            padding: 10px 16px;
+            transition: 0.3s;
+        }
+
+        .tab button:hover {
+            background-color: #ddd;
+        }
+
+        .tab button.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .tabcontent {
+            display: none;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-top: none;
+        }
+
+        .private-msg {
+            color: blue;
+        }
+
+        .group-msg {
+            color: green;
+        }
+
+        .system-msg {
+            color: gray;
+            font-style: italic;
+        }
     </style>
 </head>
+
 <body>
-    <h1>User B (ID: 1002)</h1>
+    <h1>WebSocket Chat (User ID: <span id="userIdDisplay">1002</span>)</h1>
+
+    <div class="tab">
+        <button class="tablinks active" onclick="openTab(event, 'PrivateChat')">Private Chat</button>
+        <button class="tablinks" onclick="openTab(event, 'GroupChat')">Group Chat</button>
+    </div>
+
     <div id="messages"></div>
-    
-    <input type="text" id="targetId" placeholder="Recipient ID (e.g. 1001)" value="1001">
-    <input type="text" id="messageInput" placeholder="Type your message here">
-    <button onclick="sendMessage()">Send</button>
+
+    <!-- 私聊面板 -->
+    <div id="PrivateChat" class="tabcontent" style="display: block;">
+        <div class="input-group">
+            <input type="text" id="targetId" placeholder="Recipient ID (e.g. 1002)" value="1002">
+        </div>
+        <div class="input-group">
+            <input type="text" id="privateMessageInput" placeholder="Type your private message here">
+        </div>
+        <button onclick="sendPrivateMessage()">Send Private Message</button>
+    </div>
+
+    <!-- 群聊面板 -->
+    <div id="GroupChat" class="tabcontent">
+        <div class="input-group">
+            <select id="groupId">
+                <option value="1">Tech Group (ID: 1)</option>
+                <option value="2">Game Group (ID: 2)</option>
+                <option value="3">Study Group (ID: 3)</option>
+            </select>
+        </div>
+        <div class="input-group">
+            <input type="text" id="groupMessageInput" placeholder="Type your group message here">
+        </div>
+        <button onclick="sendGroupMessage()">Send Group Message</button>
+    </div>
 
     <script>
+        // 用户ID配置
         const userId = 1002;
-        const ws = new WebSocket(`ws://192.168.137.14:8080/api/ws/connect?userId=${userId}`);
-        
-        // 接收消息
-        ws.onmessage = function(event) {
+        document.getElementById('userIdDisplay').textContent = userId;
+
+        // WebSocket连接
+        const ws = new WebSocket(`ws://${window.location.hostname}:8080/api/ws/connect?userId=${userId}`);
+
+        // 接收消息处理
+        ws.onmessage = function (event) {
             const msg = JSON.parse(event.data);
-            document.getElementById('messages').innerHTML += 
-                `<p><strong>From ${msg.form_id}:</strong> ${msg.content}</p>`;
+            let messageHtml = '';
+
+            if (msg.type === 1) { // 私聊消息
+                messageHtml = `<p class="private-msg"><strong>[Private] From ${msg.form_id}:</strong> ${msg.content}</p>`;
+            } else if (msg.type === 2) { // 群聊消息
+                messageHtml = `<p class="group-msg"><strong>[Group:${msg.group_name || msg.target_id}] From ${msg.form_id}:</strong> ${msg.content}</p>`;
+            } else { // 系统消息
+                messageHtml = `<p class="system-msg">${msg.content}</p>`;
+            }
+
+            document.getElementById('messages').innerHTML += messageHtml;
             scrollToBottom();
         };
 
         // 错误处理
-        ws.onerror = function(error) {
+        ws.onerror = function (error) {
             console.error('WebSocket Error:', error);
+            document.getElementById('messages').innerHTML +=
+                `<p class="system-msg">Connection error occurred. Please refresh the page.</p>`;
         };
 
-        // 发送消息
-        function sendMessage() {
+        // 连接关闭处理
+        ws.onclose = function () {
+            document.getElementById('messages').innerHTML +=
+                `<p class="system-msg">Connection closed. Please refresh the page.</p>`;
+        };
+
+        // 发送私聊消息
+        function sendPrivateMessage() {
             const targetId = document.getElementById('targetId').value;
-            const content = document.getElementById('messageInput').value;
-            
+            const content = document.getElementById('privateMessageInput').value;
+
             if (!targetId || !content) return;
-            
+
             const message = {
                 type: 1, // 私聊
                 target_id: parseInt(targetId),
                 content: content
             };
-            
+
             ws.send(JSON.stringify(message));
-            document.getElementById('messageInput').value = '';
-            
-            // 本地显示自己发送的消息
-            document.getElementById('messages').innerHTML += 
-                `<p style="color:blue;"><strong>To ${targetId}:</strong> ${content}</p>`;
+            document.getElementById('privateMessageInput').value = '';
+
+            // 本地显示自己发送的私聊消息
+            document.getElementById('messages').innerHTML +=
+                `<p class="private-msg"><strong>[Private] To ${targetId}:</strong> ${content}</p>`;
             scrollToBottom();
         }
 
-        // 自动滚动到底部
+        function sendGroupMessage() {
+            const groupId = document.getElementById('groupId').value;
+            const content = document.getElementById('groupMessageInput').value;
+
+            if (!groupId || !content) return;
+
+            // 获取群组名称
+            const groupSelect = document.getElementById('groupId');
+            const groupName = groupSelect.options[groupSelect.selectedIndex].text.split('(')[0].trim();
+
+            const message = {
+                type: 2, // 群聊
+                target_id: parseInt(groupId),
+                content: content,
+                group_name: groupName
+            };
+
+            ws.send(JSON.stringify(message));
+            document.getElementById('groupMessageInput').value = '';
+
+            // 本地显示自己发送的群聊消息
+            document.getElementById('messages').innerHTML +=
+                `<p class="group-msg"><strong>[Group:${groupName}] You:</strong> ${content}</p>`;
+            scrollToBottom();
+        }
+
+        // 辅助函数
         function scrollToBottom() {
             const messagesDiv = document.getElementById('messages');
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
+        function openTab(evt, tabName) {
+            const tabcontent = document.getElementsByClassName("tabcontent");
+            for (let i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+
+            const tablinks = document.getElementsByClassName("tablinks");
+            for (let i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+            }
+
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.className += " active";
+        }
+
         // 输入框回车发送
-        document.getElementById('messageInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') sendMessage();
+        document.getElementById('privateMessageInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') sendPrivateMessage();
+        });
+
+        document.getElementById('groupMessageInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') sendGroupMessage();
         });
     </script>
 </body>
+
 </html>
