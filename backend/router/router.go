@@ -52,8 +52,6 @@ func SetupRouter(
 
 		// WebSocket 相关路由
 		ws := api.Group("/ws")
-		ws.Use()
-		// ws.Use(middleware.JWTAuth(config))
 		{
 			ws.GET("/connect", websocketHandler.Connect)
 		}

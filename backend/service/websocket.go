@@ -45,21 +45,21 @@ ClientMap = {
 
 type WebsocketService struct {
 	Repository *repository.RedisRepository
-	ClientMap  map[int64]*dto.WebsocketNode // 存储用户ID到 WebSocket 连接节点(WebsocketNode) 的映射
+	ClientMap  map[uint]*dto.WebsocketNode // 存储用户ID到 WebSocket 连接节点(WebsocketNode) 的映射
 	RwLocker   sync.RWMutex                 // 读写锁，保护ClientMap的并发访问
 }
 
 func NewWebsocketService(repository *repository.RedisRepository) *WebsocketService {
 	return &WebsocketService{
 		Repository: repository,
-		ClientMap:  make(map[int64]*dto.WebsocketNode),
+		ClientMap:  make(map[uint]*dto.WebsocketNode),
 	}
 }
 
 // HandleConnection 处理WebSocket连接的核心逻辑
 // 将新连接存入ClientMap
 // 启动两个goroutine分别处理发送和接收
-func (s *WebsocketService) Connection(node *dto.WebsocketNode, userID int64) {
+func (s *WebsocketService) Connection(node *dto.WebsocketNode, userID uint) {
 
 	// 1. 保存连接
 	s.RwLocker.Lock() // 写操作(添加/删除连接)使用写锁 Lock()
@@ -75,8 +75,8 @@ func (s *WebsocketService) Connection(node *dto.WebsocketNode, userID int64) {
 // 持续读取WebSocket消息
 // 解析消息类型
 // 根据消息类型调用相应处理方法(如sendToUser)
-func (service *WebsocketService) receiveProcedure(node *dto.WebsocketNode, userID int64) {
-	defer service.cleanupConnection(userID)
+func (service *WebsocketService) receiveProcedure(node *dto.WebsocketNode, userID uint) {
+	defer service.cleanupConnection(userID)					// 唯一关闭入口
 
 	for {
 		_, data, err := node.Conn.ReadMessage()
@@ -90,6 +90,8 @@ func (service *WebsocketService) receiveProcedure(node *dto.WebsocketNode, userI
 		var msg dto.WebsocketMessage
 
 		if err := json.Unmarshal(data, &msg); err != nil {
+			// 返回错误消息给客户端
+            node.DataQueue <- []byte(`{"type":"error", "message":"invalid message format"}`)
 			continue
 		}
 
@@ -103,14 +105,8 @@ func (service *WebsocketService) receiveProcedure(node *dto.WebsocketNode, userI
 }
 
 // 从 WebsocketNode节点 的DataQueue通道读取数据并发送到WebSocket连接
-// 处理发送错误和连接关闭
+// 仅负责发送数据，不关心连接状态。
 func (s *WebsocketService) sendProcedure(node *dto.WebsocketNode) {
-	defer func() {
-		if err := node.Conn.Close(); err != nil {
-			fmt.Println("WebSocket close error:", err)
-		}
-	}()
-
 	for data := range node.DataQueue {
 		if err := node.Conn.WriteMessage(websocket.TextMessage, data); err != nil {
 			fmt.Println("WebSocket write error:", err)
@@ -121,10 +117,10 @@ func (s *WebsocketService) sendProcedure(node *dto.WebsocketNode) {
 
 // 查找目标用户连接
 // 将消息放入目标用户的数据队列
-func (s *WebsocketService) sendToUser(targetID int64, msg []byte) {
-	s.RwLocker.RLock() // 读操作(查找连接)使用读锁(RLock())
-	node, ok := s.ClientMap[targetID]
-	s.RwLocker.RUnlock()
+func (service *WebsocketService) sendToUser(targetID uint, msg []byte) {
+	service.RwLocker.RLock() 									// 读操作(查找连接)使用读锁(RLock())
+	node, ok := service.ClientMap[targetID]
+	service.RwLocker.RUnlock()
 
 	if ok {
 		node.DataQueue <- msg
@@ -132,7 +128,7 @@ func (s *WebsocketService) sendToUser(targetID int64, msg []byte) {
 }
 
 // 发送消息到群组
-func (service *WebsocketService) sendToGroup(groupId int64, fromId int64, msg []byte) {
+func (service *WebsocketService) sendToGroup(groupId uint, fromId uint, msg []byte) {
 	// 1. 查询群组成员列表
 	members, err := service.Repository.GetGroupMembers(groupId)
 
@@ -163,93 +159,25 @@ func (service *WebsocketService) sendToGroup(groupId int64, fromId int64, msg []
 }
 
 // 清理断开连接的资源(关闭通道、从ClientMap移除)
-func (s *WebsocketService) cleanupConnection(userID int64) {
-	s.RwLocker.Lock()
-	defer s.RwLocker.Unlock()
+// 只需要调用一次就好了
+func (service *WebsocketService) cleanupConnection(userID uint) {
+	service.RwLocker.Lock()
+	defer service.RwLocker.Unlock()
 
-	if node, exists := s.ClientMap[userID]; exists {
-		close(node.DataQueue)
-		delete(s.ClientMap, userID)
-	}
+	node, exists := service.ClientMap[userID]
+
+	if !exists {
+        return
+    }
+
+    // 避免重复关闭
+    if node.DataQueue != nil {
+        close(node.DataQueue)
+    }
+
+    if node.Conn != nil {
+        node.Conn.Close()
+    }
+
+    delete(service.ClientMap, userID)
 }
-
-// func (s *WebsocketService) HandleConnection(c *gin.Context) {
-// 	// 获取用户ID
-// 	userIDStr := c.Query("userId")
-// 	userID, _ := strconv.ParseInt(userIDStr, 10, 64)
-
-// 	// 升级为WebSocket连接
-// 	var upgrader = websocket.Upgrader{
-// 		CheckOrigin: func(r *http.Request) bool {
-// 			return true
-// 		},
-// 	}
-
-// 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-
-// 	if err != nil {
-// 		return
-// 	}
-
-// 	// 创建节点
-// 	node := &dto.WebsocketNode{
-// 		Conn:      conn,
-// 		DataQueue: make(chan []byte, 50),
-// 	}
-
-// 	// 保存连接
-// 	s.RwLocker.Lock()
-// 	s.ClientMap[userID] = node
-// 	s.RwLocker.Unlock()
-
-// 	// 启动读写协程
-// 	go s.sendProcedure(node)
-// 	go s.receiveProcedure(node, userID)
-// }
-
-// func (s *WebsocketService) sendProcedure(node *dto.WebsocketNode) {
-// 	defer func() {
-// 		if err := node.Conn.Close(); err != nil {
-// 			fmt.Println("WebSocket close error:", err)
-// 		}
-// 	}()
-
-// 	for data := range node.DataQueue {
-// 		if err := node.Conn.WriteMessage(websocket.TextMessage, data); err != nil {
-// 			fmt.Println("WebSocket write error:", err)
-// 			return
-// 		}
-// 	}
-// }
-
-// func (s *WebsocketService) receiveProcedure(node *dto.WebsocketNode, userID int64) {
-// 	for {
-// 		_, data, err := node.Conn.ReadMessage()
-// 		if err != nil {
-// 			break
-// 		}
-
-// 		fmt.Println("[WS] <<<< ", data)
-
-// 		var msg dto.WebsocketMessage
-// 		if err := json.Unmarshal(data, &msg); err != nil {
-// 			continue
-// 		}
-
-// 		switch msg.Type {
-// 		case 1: // 私聊
-// 			s.sendToUser(msg.TargetId, data)
-// 			// 可以扩展其他消息类型
-// 		}
-// 	}
-// }
-
-// func (s *WebsocketService) sendToUser(targetID int64, msg []byte) {
-// 	s.RwLocker.RLock()
-// 	node, ok := s.ClientMap[targetID]
-// 	s.RwLocker.RUnlock()
-
-// 	if ok {
-// 		node.DataQueue <- msg
-// 	}
-// }

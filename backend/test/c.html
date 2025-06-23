@@ -91,7 +91,7 @@
 </head>
 
 <body>
-    <h1>WebSocket Chat (User ID: <span id="userIdDisplay">1003</span>)</h1>
+    <h1>WebSocket Chat (User ID: <span id="userIdDisplay">3</span>)</h1>
 
     <div class="tab">
         <button class="tablinks active" onclick="openTab(event, 'PrivateChat')">Private Chat</button>
@@ -103,7 +103,7 @@
     <!-- 私聊面板 -->
     <div id="PrivateChat" class="tabcontent" style="display: block;">
         <div class="input-group">
-            <input type="text" id="targetId" placeholder="Recipient ID (e.g. 1002)" value="1002">
+            <input type="text" id="targetId" placeholder="Recipient ID (e.g. 1)" value="1">
         </div>
         <div class="input-group">
             <input type="text" id="privateMessageInput" placeholder="Type your private message here">
@@ -128,11 +128,18 @@
 
     <script>
         // 用户ID配置
-        const userId = 1003;
+        const userId = 3;
         document.getElementById('userIdDisplay').textContent = userId;
 
         // WebSocket连接
-        const ws = new WebSocket(`ws://${window.location.hostname}:8080/api/ws/connect?userId=${userId}`);
+        const ws = new WebSocket(`ws://${window.location.hostname}:8080/api/ws/connect`);
+
+        ws.onopen = function () {
+            ws.send(JSON.stringify({
+                type: "auth",
+                token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJpc3MiOiJnaW5faW0iLCJleHAiOjE3NTA3NDgzNzUsImlhdCI6MTc1MDY2MTk3NX0.6dpmp2kKVLFTrQleEe74IQkWY8pJTB3sGsBiflc8v6M"
+            }));
+        };
 
         // 接收消息处理
         ws.onmessage = function (event) {
@@ -140,9 +147,9 @@
             let messageHtml = '';
 
             if (msg.type === 1) { // 私聊消息
-                messageHtml = `<p class="private-msg"><strong>[Private] From ${msg.form_id}:</strong> ${msg.content}</p>`;
+                messageHtml = `<p class="private-msg"><strong>[Private] From ${msg.from_id}:</strong> ${msg.content}</p>`;
             } else if (msg.type === 2) { // 群聊消息
-                messageHtml = `<p class="group-msg"><strong>[Group:${msg.group_name || msg.target_id}] From ${msg.form_id}:</strong> ${msg.content}</p>`;
+                messageHtml = `<p class="group-msg"><strong>[Group:${msg.group_name || msg.target_id}] From ${msg.from_id}:</strong> ${msg.content}</p>`;
             } else { // 系统消息
                 messageHtml = `<p class="system-msg">${msg.content}</p>`;
             }
@@ -173,6 +180,7 @@
 
             const message = {
                 type: 1, // 私聊
+                from_id: 3,
                 target_id: parseInt(targetId),
                 content: content
             };
@@ -198,6 +206,7 @@
 
             const message = {
                 type: 2, // 群聊
+                from_id: 3,
                 target_id: parseInt(groupId),
                 content: content,
                 group_name: groupName

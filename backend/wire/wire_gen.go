@@ -34,7 +34,7 @@ func InitializeApp(configPath string) (*gin.Engine, error) {
 	}
 	redisRepository := repository.NewRedisRepository(client)
 	websocketService := service.NewWebsocketService(redisRepository)
-	websocketHandler := handler.NewWebsocketHandler(websocketService)
+	websocketHandler := handler.NewWebsocketHandler(websocketService, configConfig)
 	engine := router.SetupRouter(configConfig, userHandler, websocketHandler)
 	return engine, nil
 }

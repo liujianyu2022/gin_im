@@ -35,7 +35,7 @@ func GenerateToken(userID uint, config *config.Config) (string, error) {
 // ParseToken 解析JWT Token
 func ParseToken(tokenString string, config *config.Config) (*Claims, error) {
 	// tokenString = strings.TrimPrefix(tokenString, "Bearer ")
-	
+
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (any, error) {
 		return []byte(config.JWT.Secret), nil
 	})

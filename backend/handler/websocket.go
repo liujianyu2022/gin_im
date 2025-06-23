@@ -1,10 +1,13 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"gin_im/api"
+	"gin_im/config"
 	"gin_im/dto"
 	"gin_im/service"
+	"gin_im/tools"
 	"net/http"
 	"strconv"
 
@@ -14,11 +17,13 @@ import (
 
 type WebsocketHandler struct {
 	Service *service.WebsocketService
+	Config  *config.Config
 }
 
-func NewWebsocketHandler(websocketService *service.WebsocketService) *WebsocketHandler {
+func NewWebsocketHandler(websocketService *service.WebsocketService, config *config.Config) *WebsocketHandler {
 	return &WebsocketHandler{
 		Service: websocketService,
+		Config: config,
 	}
 }
 
@@ -30,60 +35,77 @@ var upgrader = websocket.Upgrader{
 }
 
 func (handler *WebsocketHandler) Connect(ctx *gin.Context) {
-	// 1. 协议层处理
-
-	userIDStr := ctx.Query("userId")
-	fmt.Println("userIDStr = ", userIDStr)
-
-	userID, err := strconv.ParseInt(userIDStr, 10, 64)
-	if err != nil {
-		fmt.Println("strconv.ParseInt(userIDStr, 10, 64):", err)
-		api.HandleError(ctx, api.ErrUnauthorized, "")
-		// return
-	}
 
 	// 将HTTP连接升级为WebSocket连接
 	conn, err := upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
-		fmt.Println("WebSocket upgrade error:", err)
+		api.HandleError(ctx, api.ErrInternalServer, "WebSocket upgrade error")
 		return
 	}
 
 	// 创建WebsocketNode节点(包含WebSocket连接和数据通道)
+	// 每个连接对应一个WebsocketNode实例，然后这些实例统一被 WebsocketService 的 ClientMap 所管理
+	// 创建节点但不立即注册到ClientMap
 	node := &dto.WebsocketNode{
 		Conn:      conn,
 		DataQueue: make(chan []byte, 50),
 	}
 
-	// 调用Service层的Connection方法处理连接
-	handler.Service.Connection(node, userID)
+	// 启动认证和处理流程
+	go handler.handleConnection(ctx, node)
 }
 
+// handleConnection 处理认证相关逻辑
+func (handler *WebsocketHandler) handleConnection(ctx *gin.Context, node *dto.WebsocketNode) {
 
-// var upgrader = websocket.Upgrader{
-// 	CheckOrigin: func(r *http.Request) bool {
-// 		return true
-// 	},
-// }
+	// 1. 认证阶段
+	userID, err := handler.authenticate(node)
+	if err != nil {
+		api.HandleError(ctx, api.ErrBadRequest, err)
+		return
+	}
 
-// func (handler *WebsocketHandler) Connect(ctx *gin.Context) {
-// 	// 升级为 WebSocket 连接
-// 	conn, err := upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
-// 	if err != nil {
-// 		return
-// 	}
-// 	defer conn.Close()
+	// 2. 将连接交给Service管理
+	handler.Service.Connection(node, userID)
+	
+}
 
-// 	// 获取用户ID (从JWT中)
-// 	userID, exists := ctx.Get("userID")
-// 	if !exists {
-// 		return
-// 	}
+// authenticate 处理WebSocket连接的认证
+func (handler *WebsocketHandler) authenticate(node *dto.WebsocketNode) (uint, error) {
 
-// 	// 处理 WebSocket 连接
-// 	handler.Service.HandleConnection(ctx, conn, userID.(string))
-// }
+	// 读取认证消息
+	_, authMsg, err := node.Conn.ReadMessage()
 
-// func  (handler *WebsocketHandler) Test(ctx *gin.Context) {
-// 	handler.Service.SendUserMessage(ctx)
-// }
+	if err != nil {
+		return 0, fmt.Errorf("failed to read auth message: %v", err)
+	}
+
+	// 解析认证消息
+	var auth struct {
+		Type  string `json:"type"`
+		Token string `json:"token"`
+	}
+
+	if err := json.Unmarshal(authMsg, &auth); err != nil {
+		node.Conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"error","message":"invalid auth format"}`))
+		return 0, fmt.Errorf("invalid auth format: %v", err)
+	}
+
+	if auth.Type != "auth" {
+		node.Conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"error","message":"first message must be auth"}`))
+		return 0, fmt.Errorf("first message must be auth")
+	}
+
+	// 验证token
+	fmt.Println("auth = ", auth)
+	claims, err := tools.ParseToken(auth.Token, handler.Config)
+	if err != nil {
+		node.Conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"error","message":"invalid token"}`))
+		return 0, fmt.Errorf("invalid token: %v", err)
+	}
+
+	// 发送认证成功响应
+	node.Conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"auth_success", "user_id":` + strconv.FormatUint(uint64(claims.UserID), 10)+`}`))
+
+	return claims.UserID, nil
+}
